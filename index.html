@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SoCal Water Polo Training Trip Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Rajdhani', 'Roboto Condensed', sans-serif;
+            background: #1a1a2e;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 32px;
+            background: linear-gradient(180deg, rgba(26,26,46,0.95) 0%, rgba(26,26,46,0) 100%);
+            z-index: 1000;
+            pointer-events: none;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 36px;
+            font-weight: 700;
+            color: #00ff88;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 30px rgba(0,255,136,0.6), 0 4px 8px rgba(0,0,0,0.4);
+        }
+        
+        .header p {
+            margin: 8px 0 0 0;
+            font-size: 16px;
+            color: #ffd700;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+        
+        .header-icon {
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 32px;
+            left: 32px;
+            background: rgba(26,26,46,0.95);
+            padding: 20px;
+            border-radius: 16px;
+            border: 2px solid rgba(0,255,136,0.3);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            z-index: 1000;
+            max-width: 280px;
+        }
+        
+        @media (max-width: 768px) {
+            .legend {
+                bottom: 80px;
+                left: 16px;
+                right: 16px;
+                max-width: none;
+                padding: 16px;
+            }
+            
+            .header {
+                padding: 16px 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .header p {
+                font-size: 13px;
+            }
+        }
+        
+        .legend-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #00ff88;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .legend-label {
+            font-size: 13px;
+            color: #ccc;
+        }
+        
+        .legend-instructions {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+        }
+        
+        /* Custom Leaflet Controls */
+        .leaflet-control-zoom {
+            border: 2px solid rgba(0,255,136,0.3) !important;
+            background: rgba(26,26,46,0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+            border-radius: 12px !important;
+        }
+        
+        .leaflet-control-zoom a {
+            background: transparent !important;
+            color: #00ff88 !important;
+            width: 40px !important;
+            height: 40px !important;
+            line-height: 40px !important;
+            font-size: 20px !important;
+            font-weight: bold !important;
+            transition: all 0.2s ease;
+        }
+        
+        .leaflet-control-zoom a:hover {
+            background: rgba(0,255,136,0.2) !important;
+            color: #00ff88 !important;
+        }
+        
+        /* Custom Markers */
+        .custom-marker {
+            background: none;
+            border: none;
+        }
+        
+        .marker-pin {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: bold;
+            color: #1a1a2e;
+            box-shadow: 0 0 15px currentColor;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .marker-pin::before {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, currentColor 0%, transparent 70%);
+            opacity: 0.3;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+        }
+        
+        .marker-nearby {
+            background-color: #00bfff;
+            color: #00bfff;
+        }
+        
+        .marker-far {
+            background-color: #00bfff;
+            color: #00bfff;
+        }
+        
+        .marker-home {
+            width: 28px;
+            height: 28px;
+            background-color: #ff0000;
+            border: 3px solid rgba(255,255,255,0.5);
+            animation: pulseHome 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulseHome {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 20px #ff0000; }
+            50% { transform: scale(1.1); box-shadow: 0 0 30px #ff0000; }
+        }
+        
+        /* Popup Styling */
+        .leaflet-popup-content-wrapper {
+            background: linear-gradient(135deg, rgba(26,26,46,0.98) 0%, rgba(22,33,62,0.98) 100%);
+            border: 2px solid rgba(0,255,136,0.3);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 60px rgba(0,255,136,0.2);
+            backdrop-filter: blur(12px);
+            padding: 0;
+        }
+        
+        .leaflet-popup-content {
+            margin: 20px;
+            font-family: 'Rajdhani', sans-serif;
+            min-width: 200px;
+        }
+        
+        .leaflet-popup-tip {
+            background: rgba(26,26,46,0.98);
+            border: 2px solid rgba(0,255,136,0.3);
+        }
+        
+        .popup-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #00ff88;
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+        }
+        
+        .popup-conference {
+            font-size: 12px;
+            color: #0099ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .popup-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .popup-stat {
+        }
+        
+        .popup-stat-label {
+            color: #888;
+            margin-bottom: 4px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .popup-stat-value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        
+        .popup-stat-distance {
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0,255,136,0.5);
+        }
+        
+        .popup-stat-time {
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255,215,0,0.5);
+        }
+        
+        .popup-record {
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .popup-record-label {
+            color: #888;
+            margin-bottom: 4px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .popup-record-value {
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        /* Polyline styling */
+        .distance-line {
+            stroke-dasharray: 5, 10;
+            animation: dash 30s linear infinite;
+        }
+        
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -1000;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Water Polo Training Trip</h1>
+        <p><span class="header-icon">📍</span>From Los Cab Sports Center, Fountain Valley</p>
+    </div>
+    
+    <!-- Map -->
+    <div id="map"></div>
+    
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-title">NCAA Water Polo Programs</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00bfff; box-shadow: 0 0 12px rgba(0,191,255,0.6);"></div>
+            <div class="legend-label">53 Colleges Nationwide</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff0000; box-shadow: 0 0 12px rgba(255,0,0,0.6);"></div>
+            <div class="legend-label">Training Base (Fountain Valley, CA)</div>
+        </div>
+        <div class="legend-instructions">
+            🎯 Click markers for details<br>
+            🖱️ Drag to pan map<br>
+            🔍 Use controls to zoom<br>
+            📍 Drive times shown for CA schools
+        </div>
+    </div>
+
+    <!-- Leaflet JS - Load before our script -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Show loading message
+        document.getElementById('map').innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #00ff88; font-size: 18px;">Loading map...</div>';
+        
+        // Wait for everything to load with timeout
+        let loadTimeout;
+        
+        function tryInitMap() {
+            try {
+                if (typeof L === 'undefined') {
+                    throw new Error('Leaflet library failed to load. Please check your internet connection.');
+                }
+                clearTimeout(loadTimeout);
+                initMap();
+            } catch (error) {
+                console.error('Map initialization error:', error);
+                document.getElementById('map').innerHTML = '<div style="padding: 20px; color: white; display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; flex-direction: column;"><div style="font-size: 18px; margin-bottom: 12px;">⚠️ Map Loading Error</div><div style="font-size: 14px; color: #888;">' + error.message + '</div><div style="margin-top: 20px; font-size: 13px; color: #00ff88;">Try refreshing the page</div></div>';
+            }
+        }
+        
+        // Set timeout for loading
+        loadTimeout = setTimeout(function() {
+            if (typeof L === 'undefined') {
+                document.getElementById('map').innerHTML = '<div style="padding: 20px; color: white; display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; flex-direction: column;"><div style="font-size: 18px; margin-bottom: 12px;">⚠️ Connection Timeout</div><div style="font-size: 14px; color: #888;">Unable to load map resources</div><div style="margin-top: 20px; font-size: 13px; color: #00ff88;">Please check your internet and refresh</div></div>';
+            }
+        }, 10000);
+        
+        window.addEventListener('load', tryInitMap);
+        
+        // Also try immediately if already loaded
+        if (document.readyState === 'complete') {
+            tryInitMap();
+        }
+
+        function initMap() {
+            // Home base coordinates (Los Cab Sports Center, Fountain Valley)
+            const homeBase = {
+            name: 'Los Cab Sports Center',
+            lat: 33.7091,
+            lng: -117.9537,
+            city: 'Fountain Valley, CA'
+        };
+
+        // Calculate distance using Haversine formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 3959; // Earth's radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return Math.round(R * c);
+        }
+
+        // Estimate drive time
+        function estimateDriveTime(miles) {
+            const hours = miles / 45;
+            if (hours < 1) {
+                return `${Math.round(hours * 60)} min`;
+            } else {
+                const h = Math.floor(hours);
+                const m = Math.round((hours - h) * 60);
+                return m > 0 ? `${h}h ${m}m` : `${h}h`;
+            }
+        }
+
+        // Water polo schools data - all 53 NCAA schools
+        const allSchools = [
+            // California schools (with drive time)
+            { name: 'UCLA', lat: 34.0689, lng: -118.4452, conference: 'MPSF', record: '27-2', state: 'CA' },
+            { name: 'USC', lat: 34.0224, lng: -118.2851, conference: 'MPSF', record: '23-4', state: 'CA' },
+            { name: 'Stanford', lat: 37.4275, lng: -122.1697, conference: 'MPSF', record: '18-8', state: 'CA' },
+            { name: 'California', lat: 37.8719, lng: -122.2585, conference: 'MPSF', record: '15-8', state: 'CA' },
+            { name: 'San Jose St.', lat: 37.3352, lng: -121.8811, conference: 'WCC', record: '14-8', state: 'CA' },
+            { name: 'Long Beach St.', lat: 33.7838, lng: -118.1141, conference: 'Big West', record: '17-9', state: 'CA' },
+            { name: 'UC San Diego', lat: 32.8801, lng: -117.2340, conference: 'Big West', record: '21-10', state: 'CA' },
+            { name: 'Pepperdine', lat: 34.0391, lng: -118.7108, conference: 'WCC', record: '17-11', state: 'CA' },
+            { name: 'UC Davis', lat: 38.5382, lng: -121.7617, conference: 'Big West', record: '14-13', state: 'CA' },
+            { name: 'UC Irvine', lat: 33.6405, lng: -117.8443, conference: 'Big West', record: '15-12', state: 'CA' },
+            { name: 'California Baptist', lat: 33.9297, lng: -117.4870, conference: 'WCC', record: '24-11', state: 'CA' },
+            { name: 'LMU', lat: 33.9688, lng: -118.4187, conference: 'WCC', record: '13-12', state: 'CA' },
+            { name: 'Pacific', lat: 37.9815, lng: -121.3105, conference: 'WCC', record: '15-8', state: 'CA' },
+            { name: 'UC Santa Barbara', lat: 34.4140, lng: -119.8489, conference: 'Big West', record: '17-14', state: 'CA' },
+            { name: 'Claremont-M-S', lat: 34.1064, lng: -117.7089, conference: 'SCIAC', record: '22-5', state: 'CA' },
+            { name: 'Santa Clara', lat: 37.3496, lng: -121.9390, conference: 'WCC', record: '9-14', state: 'CA' },
+            { name: 'Pomona-Pitzer', lat: 34.0985, lng: -117.7081, conference: 'SCIAC', record: '19-13', state: 'CA' },
+            { name: 'Cal St. Fullerton', lat: 33.8821, lng: -117.8850, conference: 'Big West', record: '17-16', state: 'CA' },
+            { name: 'CUI', lat: 33.6189, lng: -117.9229, conference: 'WWPA', record: '20-13', state: 'CA' },
+            { name: 'Whittier', lat: 33.9768, lng: -118.0326, conference: 'SCIAC', record: '12-10', state: 'CA' },
+            { name: 'Redlands', lat: 34.0556, lng: -117.1825, conference: 'SCIAC', record: '10-19', state: 'CA' },
+            { name: 'Cal Lutheran', lat: 34.2252, lng: -118.8844, conference: 'SCIAC', record: '12-12', state: 'CA' },
+            { name: 'Biola', lat: 33.9170, lng: -117.9923, conference: 'WWPA', record: '8-21', state: 'CA' },
+            { name: 'Occidental', lat: 34.1265, lng: -118.2111, conference: 'SCIAC', record: '9-19', state: 'CA' },
+            { name: 'Chapman', lat: 33.7946, lng: -117.8543, conference: 'SCIAC', record: '9-18', state: 'CA' },
+            { name: 'La Verne', lat: 34.1208, lng: -117.7681, conference: 'SCIAC', record: '4-16', state: 'CA' },
+            { name: 'Fresno Pacific', lat: 36.7378, lng: -119.7871, conference: 'WWPA', record: '5-19', state: 'CA' },
+            { name: 'UC Merced', lat: 37.3653, lng: -120.4240, conference: 'WWPA', record: '4-18', state: 'CA' },
+            { name: 'Caltech', lat: 34.1377, lng: -118.1253, conference: 'SCIAC', record: '1-16', state: 'CA' },
+            
+            // East Coast schools (no drive time)
+            { name: 'Fordham', lat: 40.8621, lng: -73.8885, conference: 'CWPA', record: '26-4', state: 'NY' },
+            { name: 'Princeton', lat: 40.3430, lng: -74.6551, conference: 'NEWPC', record: '23-10', state: 'NJ' },
+            { name: 'Harvard', lat: 42.3770, lng: -71.1167, conference: 'NEWPC', record: '20-10', state: 'MA' },
+            { name: 'Navy', lat: 38.9832, lng: -76.4851, conference: 'CWPA', record: '22-9', state: 'MD' },
+            { name: 'Brown', lat: 41.8268, lng: -71.4025, conference: 'NEWPC', record: '20-10', state: 'RI' },
+            { name: 'George Washington', lat: 38.8997, lng: -77.0486, conference: 'CWPA', record: '16-16', state: 'DC' },
+            { name: 'Johns Hopkins', lat: 39.3299, lng: -76.6205, conference: 'CWPA', record: '20-7', state: 'MD' },
+            { name: 'Bucknell', lat: 40.9559, lng: -76.8844, conference: 'CWPA', record: '12-16', state: 'PA' },
+            { name: 'Wagner', lat: 40.6101, lng: -74.0969, conference: 'CWPA', record: '12-18', state: 'NY' },
+            { name: 'Mount St. Mary\'s', lat: 39.4419, lng: -77.3327, conference: 'CWPA', record: '11-23', state: 'MD' },
+            { name: 'MIT', lat: 42.3601, lng: -71.0942, conference: 'NEWPC', record: '8-20', state: 'MA' },
+            { name: 'Iona', lat: 40.9080, lng: -73.8434, conference: 'NEWPC', record: '8-18', state: 'NY' },
+            { name: 'LIU', lat: 40.6872, lng: -73.9418, conference: 'NEWPC', record: '4-24', state: 'NY' },
+            { name: 'Mercyhurst', lat: 42.1134, lng: -80.0782, conference: 'CWPA', record: '2-22', state: 'PA' },
+            { name: 'Connecticut Col.', lat: 41.3788, lng: -72.1061, conference: 'NEWPC', record: '6-14', state: 'CT' },
+            
+            // Other states
+            { name: 'Air Force', lat: 38.9979, lng: -104.8614, conference: 'WCC', record: '16-15', state: 'CO' },
+            { name: 'Augustana (IL)', lat: 41.5092, lng: -90.5568, conference: 'MPSF', record: '16-8', state: 'IL' },
+            { name: 'Salem (WV)', lat: 39.2790, lng: -80.5567, conference: 'WWPA', record: '15-15', state: 'WV' },
+            { name: 'McKendree', lat: 38.0267, lng: -89.9854, conference: 'WWPA', record: '10-13', state: 'IL' },
+            { name: 'Gannon', lat: 42.1292, lng: -80.0851, conference: 'WWPA', record: '13-10', state: 'PA' },
+            { name: 'Austin', lat: 30.2806, lng: -97.7343, conference: 'MPSF', record: '7-11', state: 'TX' },
+            { name: 'Penn St.-Behrend', lat: 42.1239, lng: -80.0776, conference: 'MPSF', record: '9-19', state: 'PA' },
+            { name: 'Wash. & Jeff.', lat: 40.1722, lng: -80.2461, conference: 'MPSF', record: '2-19', state: 'PA' },
+            { name: 'Wheaton (MA)', lat: 41.9658, lng: -71.1831, conference: 'MPSF', record: '1-20', state: 'MA' }
+        ];
+
+        // Add distance and drive time
+        const schools = allSchools.map(school => {
+            const dist = calculateDistance(homeBase.lat, homeBase.lng, school.lat, school.lng);
+            const result = {
+                ...school,
+                distance: dist
+            };
+            
+            // Only add drive time for California schools
+            if (school.state === 'CA') {
+                result.driveTime = estimateDriveTime(dist);
+            }
+            
+            return result;
+        });
+
+        // Initialize map centered on US to show all colleges
+        const map = L.map('map', {
+            center: [39.8283, -98.5795],
+            zoom: 4,
+            minZoom: 3,
+            maxZoom: 18,
+            tap: true,
+            tapTolerance: 15,
+            touchZoom: true,
+            scrollWheelZoom: true,
+            dragging: true
+        });
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Store polylines
+        let currentPolyline = null;
+
+        // Add home base marker
+        const homeIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `
+                <div class="marker-pin marker-home" style="font-size: 14px;">
+                    📍
+                </div>
+            `,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+
+        const homeMarker = L.marker([homeBase.lat, homeBase.lng], { icon: homeIcon })
+            .addTo(map)
+            .bindPopup(`
+                <div style="font-family: 'Rajdhani', sans-serif;">
+                    <div style="font-size: 18px; font-weight: 700; color: #ff0000; margin-bottom: 8px;">
+                        ${homeBase.name}
+                    </div>
+                    <div style="font-size: 14px; color: #ccc;">
+                        ${homeBase.city}
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 13px; color: #888;">
+                        Your training base
+                    </div>
+                </div>
+            `);
+
+        // Add school markers
+        schools.forEach(school => {
+            const color = '#00bfff';
+            
+            const schoolIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `
+                    <div class="marker-pin marker-nearby">
+                        ${school.distance}
+                    </div>
+                `,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            const marker = L.marker([school.lat, school.lng], { icon: schoolIcon })
+                .addTo(map);
+
+            // Create popup content
+            const driveTimeSection = school.driveTime ? `
+                <div class="popup-stat">
+                    <div class="popup-stat-label">Drive Time</div>
+                    <div class="popup-stat-value popup-stat-time">${school.driveTime}</div>
+                </div>
+            ` : '';
+            
+            const popupContent = `
+                <div class="popup-title">${school.name}</div>
+                <div class="popup-conference">${school.conference} • ${school.state}</div>
+                <div class="popup-stats">
+                    <div class="popup-stat">
+                        <div class="popup-stat-label">Distance</div>
+                        <div class="popup-stat-value popup-stat-distance">${school.distance} mi</div>
+                    </div>
+                    ${driveTimeSection}
+                </div>
+                <div class="popup-record">
+                    <div class="popup-record-label">Season Record</div>
+                    <div class="popup-record-value">${school.record}</div>
+                </div>
+            `;
+
+            marker.bindPopup(popupContent, {
+                maxWidth: 300,
+                className: 'custom-popup'
+            });
+
+            // Add line on popup open
+            marker.on('popupopen', () => {
+                // Remove existing line if any
+                if (currentPolyline) {
+                    map.removeLayer(currentPolyline);
+                }
+                
+                // Draw new line
+                currentPolyline = L.polyline([
+                    [homeBase.lat, homeBase.lng],
+                    [school.lat, school.lng]
+                ], {
+                    color: color,
+                    weight: 2,
+                    opacity: 0.6,
+                    dashArray: '10, 10',
+                    className: 'distance-line'
+                }).addTo(map);
+                
+                // Bring line to back
+                currentPolyline.bringToBack();
+            });
+
+            // Remove line on popup close
+            marker.on('popupclose', () => {
+                if (currentPolyline) {
+                    map.removeLayer(currentPolyline);
+                    currentPolyline = null;
+                }
+            });
+
+            // Add tooltip with school name
+            marker.bindTooltip(school.name, {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -10],
+                opacity: 0.9,
+                className: 'school-tooltip'
+            });
+        });
+
+        // Add custom CSS for tooltips
+        const style = document.createElement('style');
+        style.textContent = `
+            .school-tooltip {
+                background: rgba(26,26,46,0.95);
+                border: 1px solid rgba(0,255,136,0.3);
+                border-radius: 6px;
+                color: #fff;
+                font-family: 'Rajdhani', sans-serif;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 4px 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            }
+            .school-tooltip::before {
+                border-top-color: rgba(0,255,136,0.3);
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Fit map to show all markers
+        const allLatLngs = schools.map(s => [s.lat, s.lng]);
+        allLatLngs.push([homeBase.lat, homeBase.lng]);
+        const bounds = L.latLngBounds(allLatLngs);
+        map.fitBounds(bounds, { padding: [50, 50] });
+        }
+    </script>
+</body>
+</html>
